@@ -1,0 +1,5 @@
+{
+  "name": "AVIAS Intelligence Command Center",
+  "description": "A comprehensive dashboard for monitoring internet media, managing recognition databases, and tracking real-time security warnings based on face and landmark detection.",
+  "requestFramePermissions": []
+}
