@@ -25,7 +25,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
             综合指挥与行为态势中心
             <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-mono border border-emerald-500/20">LIVE DATA</span>
           </h1>
-          <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest">Integrated Command & Behavioral Intelligence Hub</p>
         </div>
         <div className="flex gap-2">
            <button className="bg-[#141414] border border-[#262626] text-[10px] px-3 py-1.5 rounded hover:bg-[#1f1f1f] transition-colors">生成行为溯源报告</button>

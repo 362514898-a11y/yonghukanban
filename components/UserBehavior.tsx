@@ -1,313 +1,471 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, Cell, AreaChart, Area,
+  BarChart, Bar, Cell, AreaChart, Area, PieChart, Pie
 } from 'recharts';
 import { 
-  COLORS, MOCK_VIEWING_STATS, 
-  LOGIN_TREND_DATA, WARNING_CATEGORY_STATS, 
-  MOCK_TOP_CHANNELS, WARNING_DETAILS_MOCK, 
-  DASHBOARD_OP_METRICS
+  COLORS, DASHBOARD_OP_METRICS, MODULE_USAGE_DISTRIBUTION,
+  WARNING_PREFERENCE_DATA,
+  VIEWING_STATS_DATA, OFFLINE_UPLOAD_TREND, VISIT_TIME_DISTRIBUTION,
+  LOGIN_DAILY_DATA, LOGIN_WEEKLY_DATA, MOCK_TOP10_DATA,
+  MOCK_CHANNEL_VIEWERS, AI_ANALYSIS_STATS, GEO_DISTRIBUTION_DATA
 } from '../constants';
 
 const UserBehavior: React.FC = () => {
-  const [timeFilter, setTimeFilter] = useState('24H');
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [customRange, setCustomRange] = useState({ start: '', end: '' });
+  const [timeFilter, setTimeFilter] = useState('24h');
+  const [loginGranularity, setLoginGranularity] = useState<'hour' | 'day' | 'week'>('hour');
+  const [activeCategory, setActiveCategory] = useState<string>('YouTube在线');
+  const [inspectChannel, setInspectChannel] = useState<string | null>(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 600);
-    return () => clearTimeout(timer);
-  }, [timeFilter]);
+  const MetricCard = ({ label, value, color, icon, details, onDetailClick }: any) => (
+    <div className="bg-[#0f0f0f] border border-white/[0.05] p-4 rounded-2xl shadow-2xl flex flex-col justify-between transition-all hover:bg-[#141414] hover:border-white/[0.1] group relative overflow-hidden h-full">
+      <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: color }}></div>
+      <div className="flex justify-between items-start w-full relative z-10">
+        <div className="space-y-1">
+          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.18em] group-hover:text-gray-400 transition-colors">
+            {label}
+          </div>
+          <div className="text-2xl font-bold text-white font-mono tracking-tighter">
+            {value.toLocaleString()}
+          </div>
+        </div>
+        <div className="text-xl p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05] opacity-60 group-hover:opacity-100 transition-all group-hover:scale-110 shadow-inner flex items-center justify-center" style={{ color }}>
+          {icon}
+        </div>
+      </div>
+      {details && (
+        <div className="mt-4 pt-3 border-t border-white/[0.05] flex justify-between gap-3 overflow-hidden">
+          {details.map((d: any, i: number) => (
+            <div 
+              key={i} 
+              className={`flex flex-col min-w-0 cursor-pointer transition-opacity hover:opacity-100 ${onDetailClick ? (activeCategory.includes(d.name) ? 'opacity-100' : 'opacity-40') : ''}`}
+              onClick={() => onDetailClick && onDetailClick(d.name)}
+            >
+               <span className="text-[9px] text-gray-600 font-black uppercase truncate tracking-tight">{d.name || d.label}</span>
+               <span className="text-[11px] text-gray-300 font-mono font-bold group-hover:text-white transition-colors truncate">
+                 {d.value.toLocaleString()}
+               </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-  const timeOptions = [
-    { id: '24H', label: '近24小时' },
-    { id: '7D', label: '近7天' },
-    { id: '30D', label: '近30天' },
-    { id: 'CUSTOM', label: '自定义' }
-  ];
+  const SectionHeader = ({ title, accentColor, children }: any) => (
+    <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <div className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: accentColor, boxShadow: `0 0 10px ${accentColor}60` }}></div>
+        <div>
+          <h3 className="text-[11px] font-black text-white uppercase tracking-[0.15em]">{title}</h3>
+        </div>
+      </div>
+      {children}
+    </div>
+  );
 
-  const activeCategoryData = selectedCategory ? WARNING_CATEGORY_STATS.find(s => s.id === selectedCategory) : null;
-  const activeDetails = selectedCategory ? WARNING_DETAILS_MOCK[selectedCategory] : null;
+  const loginChartData = useMemo(() => {
+    switch (loginGranularity) {
+      case 'day': return LOGIN_DAILY_DATA;
+      case 'week': return LOGIN_WEEKLY_DATA;
+      default: return VISIT_TIME_DISTRIBUTION.map(d => ({ label: d.hour, value: d.value }));
+    }
+  }, [loginGranularity]);
+
+  const top10Data = useMemo(() => {
+    return MOCK_TOP10_DATA[activeCategory] || [];
+  }, [activeCategory]);
+
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value, name, fill }: any) => {
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius + 20;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+    return (
+      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-[8px] font-bold">
+        {name}
+      </text>
+    );
+  };
+
+  const ViewerModal = () => {
+    if (!inspectChannel) return null;
+    const viewers = MOCK_CHANNEL_VIEWERS[inspectChannel] || [
+      { user: 'operator_test', duration: '12m', time: '14:20:00', device: 'Web' },
+      { user: 'guest_user', duration: '5m', time: '15:10:22', device: 'Mobile' }
+    ];
+
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="bg-[#0f0f0f] border border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col animate-in zoom-in-95 duration-300">
+          <div className="p-5 border-b border-white/[0.05] flex justify-between items-center bg-white/[0.02]">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 rounded-full bg-[#f0a020]"></div>
+              <div>
+                <h2 className="text-white font-black uppercase text-sm tracking-widest">观看用户详情</h2>
+                <p className="text-[10px] text-[#f0a020] font-bold uppercase mt-0.5 tracking-tighter">Target: {inspectChannel}</p>
+              </div>
+            </div>
+            <button onClick={() => setInspectChannel(null)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all text-xl">×</button>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-[10px] text-gray-600 uppercase tracking-[0.2em] border-b border-white/[0.05]">
+                  <th className="pb-3 pl-2">用户 ID</th>
+                  <th className="pb-3">访问设备</th>
+                  <th className="pb-3">观看时长</th>
+                  <th className="pb-3 text-right pr-2">最后活跃</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.03]">
+                {viewers.map((v, i) => (
+                  <tr key={i} className="group hover:bg-white/[0.02]">
+                    <td className="py-3.5 pl-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-[#f0a020]/20 flex items-center justify-center text-[10px] font-bold text-[#f0a020]">{v.user[0].toUpperCase()}</div>
+                        <span className="text-xs text-gray-300 font-bold group-hover:text-white">{v.user}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5"><span className="text-[10px] text-gray-500 px-2 py-0.5 rounded border border-white/[0.05]">{v.device}</span></td>
+                    <td className="py-3.5 text-[11px] font-mono text-[#10b981]">{v.duration}</td>
+                    <td className="py-3.5 text-right pr-2 text-[10px] font-mono text-gray-500">{v.time}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-4 border-t border-white/[0.05] bg-white/[0.01] flex justify-end">
+            <button onClick={() => setInspectChannel(null)} className="px-6 py-2 bg-[#f0a020] text-black text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all">关闭窗口</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className={`relative min-h-screen pb-20 space-y-6 transition-opacity duration-500 ${isLoading ? 'opacity-50' : 'opacity-100'}`}>
+    <div className="space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-3 duration-1000 max-w-[1600px] mx-auto px-4">
+      <ViewerModal />
       
-      {/* 顶部标题与筛选 */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            用户看板
-            <span className="text-[10px] bg-[#f0a020]/10 text-[#f0a020] px-2 py-0.5 rounded border border-[#f0a020]/20 font-mono uppercase tracking-tighter">Behavior & Operation Intel</span>
-          </h1>
-          <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-medium">User Activity Tracking & Media Operation Metrics</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 自定义日期输入区 - 仅在选择自定义时平滑显示 */}
-          {timeFilter === 'CUSTOM' && (
-            <div className="flex items-center gap-2 bg-[#141414] border border-[#262626] rounded-lg p-1 animate-in fade-in slide-in-from-right-4 duration-300">
-              <input 
-                type="date" 
-                value={customRange.start}
-                onChange={(e) => setCustomRange({...customRange, start: e.target.value})}
-                className="bg-transparent text-[10px] text-gray-300 outline-none px-2 py-1 font-mono uppercase focus:text-[#f0a020]"
-              />
-              <span className="text-gray-600 text-[10px]">至</span>
-              <input 
-                type="date" 
-                value={customRange.end}
-                onChange={(e) => setCustomRange({...customRange, end: e.target.value})}
-                className="bg-transparent text-[10px] text-gray-300 outline-none px-2 py-1 font-mono uppercase focus:text-[#f0a020]"
-              />
-            </div>
-          )}
-
-          <div className="bg-[#141414] border border-[#262626] rounded-lg p-1 flex gap-1">
-            {timeOptions.map(option => (
+      {/* 1. 顶部控制栏 */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-[#0d0d0d] p-3 px-5 rounded-2xl border border-white/[0.05] shadow-2xl backdrop-blur-md">
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] text-gray-600 font-black uppercase tracking-[0.2em]">态势周期:</span>
+          <div className="flex bg-black/60 p-0.5 rounded-lg border border-white/[0.05]">
+            {['24h', '7d', '30d'].map((id) => (
               <button
-                key={option.id}
-                onClick={() => setTimeFilter(option.id)}
-                className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${
-                  timeFilter === option.id 
-                    ? 'bg-[#f0a020] text-black shadow-lg shadow-yellow-500/10' 
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#1f1f1f]'
+                key={id}
+                onClick={() => setTimeFilter(id)}
+                className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+                  timeFilter === id ? 'bg-[#f0a020] text-black shadow-lg' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                 }`}
               >
-                {option.label}
+                {id === '24h' ? '近24小时' : id === '7d' ? '近7天' : '近30天'}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* 顶部核心统计 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#141414] border border-[#262626] p-5 rounded-xl shadow-lg relative group overflow-hidden bg-gradient-to-br from-gray-500/5 to-transparent">
-          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 flex justify-between">系统登录统计 <span className="text-gray-400">USERS</span></div>
-          <div className="text-3xl font-black text-white font-mono">{DASHBOARD_OP_METRICS.totalLogins}</div>
-          <div className="mt-2 text-[9px] text-gray-600 font-bold">较昨日 +12%</div>
-        </div>
+      {/* 2. 核心统计指标 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <MetricCard label="活跃用户登录" value={DASHBOARD_OP_METRICS.activeUsers} color={COLORS.info} icon="👤" />
+        <MetricCard label="累计采集任务" value={DASHBOARD_OP_METRICS.totalCollections} color={COLORS.primary} icon="☁️" />
+        <MetricCard label="预警库配置" value={DASHBOARD_OP_METRICS.totalWarningConfigs} color={COLORS.danger} icon="⚠️" details={WARNING_PREFERENCE_DATA} />
+        <MetricCard label="视频观看次数统计" value={12050} color={COLORS.purple} icon="📺" onDetailClick={(p: string) => setActiveCategory(p)} details={VIEWING_STATS_DATA.map(d => ({name: d.name, value: d.value}))} />
+        <MetricCard label="离线视频上传" value={850} color={COLORS.orange} icon="📁" details={[{ name: '今日新增', value: 92 }, { name: '历史累计', value: 758 }]} />
+      </div>
 
-        <div className="bg-[#141414] border border-[#262626] p-5 rounded-xl shadow-lg relative group overflow-hidden bg-gradient-to-br from-blue-500/5 to-transparent">
-          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 flex justify-between">在线直播观看数 <span className="text-blue-500">LIVE</span></div>
-          <div className="text-3xl font-black text-white font-mono">{DASHBOARD_OP_METRICS.onlineLiveViews.toLocaleString()}</div>
-          <div className="mt-2 h-0.5 w-full bg-[#262626] rounded-full overflow-hidden">
-             <div className="h-full bg-blue-500 animate-pulse" style={{ width: '70%' }}></div>
+      {/* 3. 三栏并列：登录行为趋势 + 功能模块使用占比 + AI分析能力使用占比 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* 登录趋势 */}
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-5 shadow-2xl flex flex-col h-[420px]">
+          <SectionHeader title="用户登录行为趋势" accentColor="#3b82f6">
+            <div className="flex bg-black/40 p-0.5 rounded-lg border border-white/[0.05]">
+              {[{ id: 'hour', label: '时' }, { id: 'day', label: '天' }, { id: 'week', label: '周' }].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setLoginGranularity(opt.id as any)}
+                  className={`px-3 py-1 text-[9px] font-black rounded-md transition-all ${
+                    loginGranularity === opt.id ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-600 hover:text-gray-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </SectionHeader>
+          <div className="flex-1 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={loginChartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="loginGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="5 5" stroke="#1a1a1a" vertical={false} />
+                <XAxis dataKey="label" stroke="#333" fontSize={9} axisLine={false} tickLine={false} tick={{ dy: 5 }} />
+                <YAxis stroke="#333" fontSize={9} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} />
+                <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fill="url(#loginGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-[#141414] border border-[#262626] p-5 rounded-xl shadow-lg relative group overflow-hidden bg-gradient-to-br from-emerald-500/5 to-transparent">
-          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 flex justify-between">采集账号总数 <span className="text-emerald-500">ACCTS</span></div>
-          <div className="text-3xl font-black text-white font-mono">{DASHBOARD_OP_METRICS.collectionAccounts}</div>
-          <div className="mt-2 text-[9px] text-emerald-500/70 font-bold">活跃率 98.4%</div>
-        </div>
-
-        <div className="bg-[#141414] border border-[#262626] p-5 rounded-xl shadow-lg relative group overflow-hidden bg-gradient-to-br from-[#f0a020]/5 to-transparent">
-          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 flex justify-between">在线视频采集总数 <span className="text-[#f0a020]">INGEST</span></div>
-          <div className="text-3xl font-black text-white font-mono">{DASHBOARD_OP_METRICS.onlineVideoTotal.toLocaleString()}</div>
-          <div className="mt-2 text-[9px] text-[#f0a020]/70 font-bold">实时同步中</div>
-        </div>
-
-        <div className="bg-[#141414] border border-[#262626] p-5 rounded-xl shadow-lg relative group overflow-hidden bg-gradient-to-br from-purple-500/5 to-transparent">
-          <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2 flex justify-between">离线视频上传数 <span className="text-purple-500">OFFLINE</span></div>
-          <div className="text-3xl font-black text-white font-mono">{DASHBOARD_OP_METRICS.offlineVideoUploads}</div>
-          <div className="mt-2 text-[9px] text-purple-500/70 font-bold">存储状态正常</div>
-        </div>
-      </div>
-
-      {/* 预警分类监控分析 */}
-      <div className="bg-[#0d0d0d] border border-[#262626] rounded-xl p-4 relative overflow-hidden">
-        <div className="flex items-center gap-2 mb-3">
-           <div className="w-1.5 h-3 bg-[#f0a020]"></div>
-           <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">预警分类趋势监控 <span className="text-[#f0a020]/50 ml-1">WARNING ANALYTICS</span></h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {WARNING_CATEGORY_STATS.map((item, idx) => (
-            <div 
-              key={idx} 
-              onClick={() => setSelectedCategory(item.id)}
-              className={`cursor-pointer bg-[#141414] border p-4 rounded-lg shadow-md transition-all group/card overflow-hidden ${
-                selectedCategory === item.id ? 'border-[#f0a020] bg-[#1a1a1a] scale-[1.02]' : 'border-[#262626] hover:border-[#f0a020]/30 hover:bg-[#1a1a1a]'
-              }`}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-tighter">{item.category}</h3>
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+        {/* 模块占比 */}
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-5 shadow-2xl flex flex-col h-[420px]">
+          <SectionHeader title="功能模块使用占比" accentColor="#f0a020" />
+          <div className="flex-1 min-h-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={MODULE_USAGE_DISTRIBUTION} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={5} dataKey="value" stroke="none">
+                  {MODULE_USAGE_DISTRIBUTION.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {MODULE_USAGE_DISTRIBUTION.map((m, i) => (
+              <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.03]">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: m.color }}></div>
+                <span className="text-[9px] text-gray-500 font-bold truncate">{m.name}</span>
+                <span className="ml-auto text-[10px] text-white font-mono font-bold">{m.value}%</span>
               </div>
-              <div className="flex flex-col">
-                <div className="text-[9px] text-gray-600 uppercase font-black tracking-widest mb-1">今日新增记录</div>
-                <div className="flex items-baseline gap-2">
-                  <div className="text-2xl font-black text-white font-mono">{item.new}</div>
-                  <div className="text-[8px] text-emerald-500 font-bold">Active</div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI分析能力占比 */}
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-5 shadow-2xl flex flex-col h-[420px] relative overflow-hidden">
+          <SectionHeader title="AI分析能力使用占比" accentColor="#3b82f6" />
+          <div className="flex-1 min-h-[160px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie 
+                  data={AI_ANALYSIS_STATS} 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={80} 
+                  paddingAngle={4} 
+                  dataKey="value" 
+                  stroke="#0a0a0a"
+                  strokeWidth={2}
+                  label={renderCustomLabel}
+                  labelLine={false}
+                >
+                  {AI_ANALYSIS_STATS.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            {AI_ANALYSIS_STATS.map((item, idx) => (
+              <div key={idx} className="flex flex-col p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                   <span className="text-[9px] text-gray-400 font-bold uppercase">{item.name}</span>
                 </div>
+                <div className="text-sm font-mono font-bold text-white mt-1">{item.value.toLocaleString()}</div>
               </div>
-              {/* 卡片底部的渐变背景点缀 */}
-              <div className="absolute -bottom-4 -right-4 w-12 h-12 rounded-full opacity-10 blur-xl" style={{ backgroundColor: item.color }}></div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 主数据分析区 */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-lg">
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-8">
-              <div className="w-1 h-3 bg-blue-500"></div> 登录趋势分析 ({timeFilter === 'CUSTOM' ? '自定义范围' : timeFilter})
-            </h3>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={LOGIN_TREND_DATA}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
-                  <XAxis dataKey="time" stroke="#444" fontSize={10} axisLine={false} tickLine={false} />
-                  <YAxis stroke="#444" fontSize={10} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #262626', borderRadius: '8px' }} />
-                  <Area type="monotone" dataKey="logins" stroke="#3b82f6" fill="rgba(59, 130, 246, 0.1)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-[#141414] border border-[#262626] rounded-xl p-6 shadow-lg">
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-8">
-              <div className="w-1 h-3 bg-[#f0a020]"></div> 频道观看时长 Top Channels
-            </h3>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={MOCK_TOP_CHANNELS} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" horizontal={false} />
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="channelName" type="category" stroke="#9ca3af" fontSize={9} width={140} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.03)'}} contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #262626', borderRadius: '8px' }} />
-                  <Bar dataKey="percentage" radius={[0, 4, 4, 0]} barSize={16}>
-                    {MOCK_TOP_CHANNELS.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.category === 'RADIO' ? COLORS.radio : entry.category === 'YOUTUBE' ? COLORS.youtube : COLORS.success} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+      {/* 4. 地域分布态势 与 离线上传趋势 并列 (2:1 Grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* 左侧：地域分布 (占据 2/3) */}
+        <div className="lg:col-span-2 bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-6 shadow-2xl overflow-hidden relative">
+          <SectionHeader title="用户采集频道地域分布" accentColor="#f0a020" />
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-stretch h-[400px]">
+             {/* 地图区域 */}
+             <div className="xl:col-span-3 relative flex items-center justify-center bg-black/10 rounded-xl border border-white/[0.02] overflow-hidden">
+                <svg viewBox="0 0 1000 500" className="w-full h-full opacity-60">
+                    <path d="M50,100 L250,100 L280,180 L350,220 L250,400 L50,300 Z" fill="#444" opacity="0.4" />
+                    <path d="M100,120 L240,120 L260,200 L200,280 L120,280 Z" fill="#ff4d4d" className="animate-pulse" />
+                    <path d="M250,350 L350,350 L400,450 L300,480 L250,400 Z" fill="#3b82f6" opacity="0.6" />
+                    <path d="M450,100 L550,100 L580,200 L450,200 Z" fill="#6a11cb" opacity="0.6" />
+                    <path d="M450,220 L550,220 L600,350 L550,450 L450,400 Z" fill="#333" opacity="0.3" />
+                    <path d="M530,230 L590,230 L580,260 L540,260 Z" fill="#ff8c00" />
+                    <path d="M600,100 L900,100 L950,250 L850,350 L600,350 Z" fill="#444" opacity="0.4" />
+                    <path d="M750,150 L850,150 L880,220 L800,280 Z" fill="#4facfe" opacity="0.8" />
+                    <path d="M850,380 L950,380 L950,450 L850,450 Z" fill="#2575fc" opacity="0.7" />
+                    <path d="M0,250 L1000,250" stroke="white" strokeWidth="0.5" opacity="0.05" />
+                    <path d="M500,0 L500,500" stroke="white" strokeWidth="0.5" opacity="0.05" />
+                </svg>
+                {/* 垂直色阶 */}
+                <div className="absolute left-6 bottom-8 flex flex-col items-center gap-1 bg-black/40 p-2 rounded-lg border border-white/5 backdrop-blur-sm">
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">高</span>
+                    <div className="w-2 h-20 rounded-full bg-gradient-to-t from-[#2575fc] via-[#f09819] to-[#ff512f] border border-white/10 shadow-[0_0_10px_rgba(255,81,47,0.2)]"></div>
+                    <span className="text-[8px] text-gray-400 font-bold uppercase">低</span>
+                    <div className="mt-1 text-[8px] font-mono text-gray-500">100</div>
+                    <div className="h-4"></div>
+                    <div className="text-[8px] font-mono text-gray-500">0</div>
+                </div>
+                {/* 扫描效果 */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#f0a020]/5 to-transparent h-20 w-full animate-[scan_4s_linear_infinite] pointer-events-none"></div>
+             </div>
+             {/* 排行区域 */}
+             <div className="xl:col-span-2 flex flex-col bg-black/20 p-3 rounded-xl border border-white/5">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={GEO_DISTRIBUTION_DATA} layout="vertical" margin={{ left: -10, right: 30, top: 0, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="geoBarGradient" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#2575fc" />
+                                <stop offset="60%" stopColor="#f09819" />
+                                <stop offset="100%" stopColor="#ff512f" />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+                        <XAxis type="number" hide domain={[0, 100]} />
+                        <YAxis dataKey="name" type="category" stroke="#888" fontSize={9} axisLine={false} tickLine={false} width={100} tick={{ fill: '#bbb', fontWeight: 600 }} />
+                        <Tooltip cursor={{fill: 'rgba(255,255,255,0.03)'}} contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px', fontSize: '9px' }} />
+                        <Bar dataKey="value" radius={[0, 2, 2, 0]} barSize={14}>
+                            {GEO_DISTRIBUTION_DATA.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill="url(#geoBarGradient)" />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+             </div>
           </div>
         </div>
 
-        <div className="bg-[#141414] border border-[#262626] rounded-xl overflow-hidden shadow-2xl">
-          <div className="p-4 border-b border-[#262626] flex justify-between items-center bg-[#0d0d0d]">
-             <div className="flex items-center gap-3">
-               <div className="w-1 h-3 bg-[#f0a020]"></div>
-               <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">用户行为实时审计 Activity Log</span>
-             </div>
-             <div className="text-[10px] text-gray-600 font-mono tracking-tighter uppercase">Operational Metadata Synced</div>
+        {/* 右侧：离线视频上传 (占据 1/3) */}
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-6 shadow-2xl flex flex-col">
+          <SectionHeader title="离线视频上传统计" accentColor="#a855f7" />
+          <div className="flex-1 min-h-[300px] mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={OFFLINE_UPLOAD_TREND} margin={{ left: -30, top: 10 }}>
+                <CartesianGrid strokeDasharray="5 5" stroke="#1a1a1a" vertical={false} />
+                <XAxis dataKey="date" stroke="#555" fontSize={10} axisLine={false} tickLine={false} />
+                <YAxis stroke="#555" fontSize={10} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{fill: 'rgba(255,255,255,0.02)'}} contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} />
+                <Bar dataKey="count" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={35}>
+                    {OFFLINE_UPLOAD_TREND.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fillOpacity={0.8} />
+                    ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px] text-left">
-              <thead className="bg-[#1a1a1a] text-gray-500 border-b border-[#262626] uppercase font-bold tracking-tighter">
+          <div className="mt-4 p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl flex justify-between items-center">
+             <div className="space-y-1">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">周期内最高</span>
+                <div className="text-xl font-mono font-bold text-white">70 <span className="text-[10px] text-gray-600 font-normal">files</span></div>
+             </div>
+             <div className="w-px h-8 bg-white/5"></div>
+             <div className="space-y-1">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">平均上传</span>
+                <div className="text-xl font-mono font-bold text-[#a855f7]">52.1</div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. 视频观看联动展示区域 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-5 shadow-2xl">
+          <SectionHeader title="用户视频观看统计" accentColor="#ef4444" />
+          <div className="h-[280px] mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={VIEWING_STATS_DATA} 
+                layout="vertical"
+                margin={{ left: 10, right: 30 }}
+                onClick={(state) => state?.activeLabel && setActiveCategory(state.activeLabel)}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" stroke="#555" fontSize={10} axisLine={false} tickLine={false} width={100} />
+                <Tooltip 
+                  cursor={{fill: 'rgba(255,255,255,0.02)'}} 
+                  contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} 
+                />
+                <Bar dataKey="value" barSize={25} radius={[0, 4, 4, 0]} className="cursor-pointer">
+                  {VIEWING_STATS_DATA.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color} 
+                      fillOpacity={activeCategory === entry.name ? 1 : 0.4}
+                      stroke={activeCategory === entry.name ? '#fff' : 'transparent'}
+                      strokeWidth={1}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 space-y-2">
+            {VIEWING_STATS_DATA.map((item, idx) => (
+              <button 
+                key={idx} 
+                onClick={() => setActiveCategory(item.name)}
+                className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${activeCategory === item.name ? 'bg-white/5 border-white/10' : 'border-transparent opacity-60 hover:opacity-100'}`}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-[10px] text-gray-300 font-bold uppercase">{item.name}</span>
+                </div>
+                <span className="text-[10px] font-mono text-gray-500">{item.value.toLocaleString()}次</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-5 shadow-2xl">
+          <SectionHeader 
+            title={`${activeCategory} 播放 TOP 10`} 
+            accentColor={VIEWING_STATS_DATA.find(d => d.name === activeCategory)?.color || COLORS.primary} 
+          />
+          <div className="overflow-x-auto min-h-[360px]">
+            <table className="w-full text-left">
+              <thead className="border-b border-white/[0.05] text-[9px] text-gray-600 uppercase tracking-widest">
                 <tr>
-                  <th className="p-4">用户标识</th>
-                  <th className="p-4">内容来源</th>
-                  <th className="p-4">实时播放/频道内容</th>
-                  <th className="p-4 text-right">今日累计时长 ({timeFilter})</th>
+                  <th className="pb-3 pl-2">排名</th>
+                  <th className="pb-3">资源/频道名称</th>
+                  <th className="pb-3">访问频次</th>
+                  <th className="pb-3">累计时长</th>
+                  <th className="pb-3 text-right pr-2">详情</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#262626]">
-                {MOCK_VIEWING_STATS.map((user, idx) => (
-                  <tr key={idx} className="hover:bg-[#1a1a1a] transition-all group">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] bg-[#262626] text-gray-400 group-hover:bg-[#f0a020] group-hover:text-black transition-colors">
-                          {user.userName.substring(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="text-white font-bold group-hover:text-[#f0a020]">{user.userName}</div>
-                          <div className="text-[8px] text-gray-600 font-mono uppercase">UID: {user.userId}</div>
-                        </div>
-                      </div>
+              <tbody className="divide-y divide-white/[0.03]">
+                {top10Data.length > 0 ? top10Data.map((item, idx) => (
+                  <tr key={idx} onClick={() => setInspectChannel(item.name)} className="hover:bg-white/[0.05] transition-colors group cursor-pointer">
+                    <td className="py-3.5 pl-2">
+                      <span className={`w-6 h-6 flex items-center justify-center rounded text-[10px] font-black ${idx < 3 ? 'bg-white/10 text-white' : 'text-gray-600'}`}>{idx + 1}</span>
                     </td>
-                    <td className="p-4">
-                       <span className={`px-2 py-0.5 rounded text-[9px] border font-black uppercase tracking-tighter ${user.currentViewing?.source === 'ONLINE_LIVE' ? 'border-emerald-500/30 text-emerald-500' : 'border-gray-500/30 text-gray-500'}`}>
-                         {user.currentViewing?.source.replace('_', ' ') || 'OFFLINE'}
-                       </span>
-                    </td>
-                    <td className="p-4 text-gray-300 truncate max-w-[500px]">{user.currentViewing?.channel || `上次活跃: ${user.lastActiveTime}`}</td>
-                    <td className="p-4 text-right text-white font-mono font-black">{user.totalDurationToday}</td>
+                    <td className="py-3.5 text-[11px] font-bold text-gray-300 group-hover:text-white transition-colors">{item.name}</td>
+                    <td className="py-3.5 text-[10px] font-mono text-gray-500">{item.value}</td>
+                    <td className="py-3.5 text-[10px] font-mono text-gray-500">{item.duration}</td>
+                    <td className="py-3.5 text-right pr-2"><span className="text-gray-600 group-hover:text-[#f0a020] transition-colors text-xs">👁</span></td>
                   </tr>
-                ))}
+                )) : (
+                  <tr><td colSpan={5} className="py-20 text-center text-gray-600 text-xs font-bold uppercase tracking-widest italic">暂无对应排行榜数据</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* 预警详情分析抽屉 */}
-      {selectedCategory && (
-        <>
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 animate-in fade-in duration-300" onClick={() => setSelectedCategory(null)} />
-          <div className="fixed top-0 right-0 h-full w-[450px] bg-[#0d0d0d] border-l border-[#f0a020]/30 shadow-2xl z-50 animate-in slide-in-from-right-full duration-500 flex flex-col">
-            <div className="p-6 border-b border-[#262626] flex justify-between items-center bg-[#111]">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-6 bg-[#f0a020]" />
-                <div>
-                  <h2 className="text-lg font-bold text-white uppercase tracking-wider">{activeCategoryData?.category} 深度分析</h2>
-                  <p className="text-[10px] text-gray-500 uppercase font-mono mt-0.5 tracking-widest">Intelligence Node Insight</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedCategory(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1f1f1f] text-gray-500 hover:bg-[#f0a020] hover:text-black transition-all">✕</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-l-2 border-[#f0a020] pl-2">核心运营指标 Summary</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#141414] border border-[#262626] p-4 rounded-xl">
-                    <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">数据库总目标</div>
-                    <div className="text-2xl font-black text-[#f0a020] font-mono">{activeDetails?.summary.totalTargets}</div>
-                  </div>
-                  <div className="bg-[#141414] border border-[#262626] p-4 rounded-xl">
-                    <div className="text-[8px] text-gray-600 uppercase font-bold mb-1">历史命中总数</div>
-                    <div className="text-2xl font-black text-white font-mono">{activeDetails?.summary.totalHits}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-l-2 border-emerald-500 pl-2">预警贡献排行 TOP 5 Contributors</h3>
-                <div className="space-y-3">
-                  {activeDetails?.topUsers.map((user, idx) => (
-                    <div key={idx} className="bg-[#141414] border border-[#262626] p-4 rounded-xl group">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-white group-hover:text-emerald-500 transition-colors">{user.name}</span>
-                        <span className="text-xs font-mono text-gray-400">{user.count} Warnings</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${user.ratio}%`, backgroundColor: user.color }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-l-2 border-red-500 pl-2">最近命中流水 Recent Hits</h3>
-                <div className="space-y-3">
-                  {activeDetails?.hits.map((hit, idx) => (
-                    <div key={idx} className="bg-[#141414] border border-[#262626] p-3 rounded-lg flex justify-between items-center group hover:border-red-500/30 transition-all">
-                      <div>
-                        <div className="text-[11px] font-bold text-white">{hit.result}</div>
-                        <div className="text-[9px] text-gray-600 uppercase font-mono mt-0.5">{hit.source} | <span className="text-emerald-500">{hit.confidence}</span></div>
-                      </div>
-                      <div className="text-[10px] text-gray-500 font-mono">{hit.time}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="p-6 bg-[#111] border-t border-[#262626]">
-              <button className="w-full bg-[#f0a020] text-black font-black uppercase text-[10px] py-3 rounded-lg tracking-widest shadow-lg shadow-yellow-500/10 hover:opacity-90 transition-opacity">下载数据报告</button>
-            </div>
-          </div>
-        </>
-      )}
+      <style>{`
+        @keyframes scan {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(400px); }
+        }
+      `}</style>
     </div>
   );
 };
