@@ -94,6 +94,16 @@ export const VIEWING_STATS_DATA = [
   { name: '离线视频', value: 3120, color: '#a855f7' },
 ];
 
+export const OFFLINE_BEHAVIOR_TREND = [
+  { date: '01-01', upload: 45, contentSplit: 32, hourSplit: 12 },
+  { date: '01-02', upload: 52, contentSplit: 41, hourSplit: 18 },
+  { date: '01-03', upload: 48, contentSplit: 38, hourSplit: 15 },
+  { date: '01-04', upload: 70, contentSplit: 55, hourSplit: 22 },
+  { date: '01-05', upload: 61, contentSplit: 48, hourSplit: 19 },
+  { date: '01-06', upload: 55, contentSplit: 44, hourSplit: 17 },
+  { date: '01-07', upload: 42, contentSplit: 33, hourSplit: 14 },
+];
+
 export const OFFLINE_UPLOAD_TREND = [
   { date: '01-01', count: 45 }, { date: '01-02', count: 52 }, { date: '01-03', count: 48 },
   { date: '01-04', count: 70 }, { date: '01-05', count: 61 }, { date: '01-06', count: 55 },

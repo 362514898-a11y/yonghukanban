@@ -2,14 +2,17 @@
 import React, { useState, useMemo } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, Cell, AreaChart, Area, PieChart, Pie
+  Bar, Cell, AreaChart, Area, PieChart, Pie, Legend,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart
 } from 'recharts';
 import { 
   COLORS, DASHBOARD_OP_METRICS, MODULE_USAGE_DISTRIBUTION,
   WARNING_PREFERENCE_DATA,
-  VIEWING_STATS_DATA, OFFLINE_UPLOAD_TREND, VISIT_TIME_DISTRIBUTION,
+  VIEWING_STATS_DATA, VISIT_TIME_DISTRIBUTION,
   LOGIN_DAILY_DATA, LOGIN_WEEKLY_DATA, MOCK_TOP10_DATA,
-  MOCK_CHANNEL_VIEWERS, AI_ANALYSIS_STATS, GEO_DISTRIBUTION_DATA
+  MOCK_CHANNEL_VIEWERS, AI_ANALYSIS_STATS, GEO_DISTRIBUTION_DATA,
+  OFFLINE_BEHAVIOR_TREND
 } from '../constants';
 
 const UserBehavior: React.FC = () => {
@@ -76,6 +79,20 @@ const UserBehavior: React.FC = () => {
   const top10Data = useMemo(() => {
     return MOCK_TOP10_DATA[activeCategory] || [];
   }, [activeCategory]);
+
+  const offlineRadarData = useMemo(() => {
+    const totals = OFFLINE_BEHAVIOR_TREND.reduce((acc, curr) => ({
+      upload: acc.upload + curr.upload,
+      contentSplit: acc.contentSplit + curr.contentSplit,
+      hourSplit: acc.hourSplit + curr.hourSplit
+    }), { upload: 0, contentSplit: 0, hourSplit: 0 });
+
+    return [
+      { subject: '视频上传', value: totals.upload, fullMark: 500 },
+      { subject: '内容切分', value: totals.contentSplit, fullMark: 500 },
+      { subject: '小时切分', value: totals.hourSplit, fullMark: 500 },
+    ];
+  }, []);
 
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, value, name, fill }: any) => {
     const RADIAN = Math.PI / 180;
@@ -342,33 +359,60 @@ const UserBehavior: React.FC = () => {
           </div>
         </div>
 
-        {/* 右侧：离线视频上传 (占据 1/3) */}
-        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-6 shadow-2xl flex flex-col">
-          <SectionHeader title="离线视频上传统计" accentColor="#a855f7" />
-          <div className="flex-1 min-h-[300px] mt-4">
+        {/* 右侧：离线视频行为统计 - 雷达画像展示 (占据 1/3) */}
+        <div className="bg-[#0f0f0f] border border-white/[0.05] rounded-2xl p-6 shadow-2xl flex flex-col h-full relative overflow-hidden group">
+          <SectionHeader title="离线视频行为画像" accentColor="#a855f7" />
+          
+          {/* 雷达图：展示整体行为平衡度 */}
+          <div className="flex-1 min-h-[220px] mt-2 relative">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={OFFLINE_UPLOAD_TREND} margin={{ left: -30, top: 10 }}>
-                <CartesianGrid strokeDasharray="5 5" stroke="#1a1a1a" vertical={false} />
-                <XAxis dataKey="date" stroke="#555" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis stroke="#555" fontSize={10} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{fill: 'rgba(255,255,255,0.02)'}} contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '8px' }} />
-                <Bar dataKey="count" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={35}>
-                    {OFFLINE_UPLOAD_TREND.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fillOpacity={0.8} />
-                    ))}
-                </Bar>
+              <RadarChart cx="50%" cy="50%" outerRadius="75%" data={offlineRadarData}>
+                <PolarGrid stroke="#262626" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#555', fontSize: 10, fontWeight: 'bold' }} />
+                <Radar
+                  name="行为总量"
+                  dataKey="value"
+                  stroke="#a855f7"
+                  strokeWidth={2}
+                  fill="#a855f7"
+                  fillOpacity={0.4}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0d0d0d', border: '1px solid #333', borderRadius: '12px', fontSize: '10px' }} 
+                />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* 7天上传趋势：分布展示 */}
+          <div className="h-[100px] mt-4 opacity-70 group-hover:opacity-100 transition-opacity">
+            <div className="text-[8px] text-gray-600 font-bold uppercase mb-2 tracking-widest flex justify-between">
+              <span>近7天上传量分布</span>
+              <span className="font-mono">7-DAY DIST.</span>
+            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={OFFLINE_BEHAVIOR_TREND}>
+                <Bar dataKey="upload" fill="#a855f7" radius={[2, 2, 0, 0]} barSize={15} />
+                <Tooltip 
+                  cursor={{fill: 'rgba(255,255,255,0.02)'}}
+                  contentStyle={{ display: 'none' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-4 p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl flex justify-between items-center">
-             <div className="space-y-1">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">周期内最高</span>
-                <div className="text-xl font-mono font-bold text-white">70 <span className="text-[10px] text-gray-600 font-normal">files</span></div>
+
+          <div className="mt-6 grid grid-cols-3 gap-2">
+             <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-center group/item hover:bg-white/[0.04] transition-all">
+                <span className="text-[8px] text-gray-500 font-bold uppercase block mb-1">上传总量</span>
+                <span className="text-sm font-mono font-bold text-white group-hover/item:text-[#a855f7] transition-colors">389</span>
              </div>
-             <div className="w-px h-8 bg-white/5"></div>
-             <div className="space-y-1">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">平均上传</span>
-                <div className="text-xl font-mono font-bold text-[#a855f7]">52.1</div>
+             <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-center group/item hover:bg-white/[0.04] transition-all">
+                <span className="text-[8px] text-gray-500 font-bold uppercase block mb-1">切分处理</span>
+                <span className="text-sm font-mono font-bold text-[#10b981]">297</span>
+             </div>
+             <div className="p-3 bg-white/[0.02] border border-white/[0.05] rounded-xl text-center group/item hover:bg-white/[0.04] transition-all">
+                <span className="text-[8px] text-gray-500 font-bold uppercase block mb-1">小时归档</span>
+                <span className="text-sm font-mono font-bold text-[#0ea5e9]">110</span>
              </div>
           </div>
         </div>
