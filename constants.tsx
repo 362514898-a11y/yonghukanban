@@ -43,24 +43,24 @@ export const MODULE_USAGE_DISTRIBUTION = [
 ];
 
 export const AI_ANALYSIS_STATS = [
-  { name: 'Transcript', value: 1551, color: '#3b82f6' },
-  { name: 'Labels', value: 1061, color: '#10b981' },
+  { name: '转录文本', value: 1551, color: '#3b82f6' },
+  { name: '标签', value: 1061, color: '#10b981' },
   { name: 'OCR', value: 1750, color: '#f0a020' },
-  { name: 'Summary', value: 915, color: '#a855f7' },
+  { name: '摘要', value: 915, color: '#a855f7' },
 ];
 
-// 地域分布数据
+// 地域分布数据 - Updated to match the reference image
 export const GEO_DISTRIBUTION_DATA = [
-  { name: 'United States', value: 98, color: '#ff4d4d' },
-  { name: 'Saudi Arabia', value: 62, color: '#ff8c00' },
-  { name: 'United Arab Emirates', value: 59, color: '#ffa500' },
-  { name: 'Israel', value: 57, color: '#ffb347' },
-  { name: 'Qatar', value: 51, color: '#ffcc33' },
-  { name: 'China', value: 50, color: '#4facfe' },
-  { name: 'United Kingdom', value: 49, color: '#00f2fe' },
-  { name: 'Kuwait', value: 47, color: '#3b82f6' },
-  { name: 'Germany', value: 38, color: '#2575fc' },
-  { name: 'France', value: 37, color: '#6a11cb' },
+  { name: '美国', value: 91 },
+  { name: '阿联酋', value: 71 },
+  { name: '沙特阿拉伯', value: 64 },
+  { name: '以色列', value: 60 },
+  { name: '卡塔尔', value: 59 },
+  { name: '英国', value: 54 },
+  { name: '科威特', value: 51 },
+  { name: '中国', value: 50 },
+  { name: '日本', value: 38 },
+  { name: '德国', value: 35 },
 ];
 
 export const VISIT_TIME_DISTRIBUTION = Array.from({ length: 24 }, (_, i) => ({
@@ -69,16 +69,16 @@ export const VISIT_TIME_DISTRIBUTION = Array.from({ length: 24 }, (_, i) => ({
 }));
 
 export const LOGIN_DAILY_DATA = [
-  { label: '01-01', value: 12 }, { label: '01-02', value: 18 }, { label: '01-03', value: 15 },
-  { label: '01-04', value: 22 }, { label: '01-05', value: 30 }, { label: '01-06', value: 28 },
-  { label: '01-07', value: 35 }, { label: '01-08', value: 42 }, { label: '01-09', value: 38 },
-  { label: '01-10', value: 45 },
+  { label: '1月1日', value: 12 }, { label: '1月2日', value: 18 }, { label: '1月3日', value: 15 },
+  { label: '1月4日', value: 22 }, { label: '1月5日', value: 30 }, { label: '1月6日', value: 28 },
+  { label: '1月7日', value: 35 }, { label: '1月8日', value: 42 }, { label: '1月9日', value: 38 },
+  { label: '1月10日', value: 45 },
 ];
 
 export const LOGIN_WEEKLY_DATA = [
-  { label: 'W1', value: 120 }, { label: 'W2', value: 150 }, { label: 'W3', value: 180 },
-  { label: 'W4', value: 210 }, { label: 'W5', value: 190 }, { label: 'W6', value: 230 },
-  { label: 'W7', value: 250 }, { label: 'W8', value: 280 },
+  { label: '第1周', value: 120 }, { label: '第2周', value: 150 }, { label: '第3周', value: 180 },
+  { label: '第4周', value: 210 }, { label: '第5周', value: 190 }, { label: '第6周', value: 230 },
+  { label: '第7周', value: 250 }, { label: '第8周', value: 280 },
 ];
 
 export const WARNING_PREFERENCE_DATA = [
